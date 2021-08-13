@@ -1,13 +1,15 @@
 import * as React from 'react';
 import { Paper, makeStyles } from '@material-ui/core';
 
+import { Move } from './GameGrid';
+
 export interface SquareProps {
   length: number;
   x: number;
   y: number;
-  grids: Array<Array<number>>;
-  setGrids: React.Dispatch<React.SetStateAction<Array<Array<number>>>>;
+  grids: Array<Array<React.MutableRefObject<number>>>;
   turn: React.MutableRefObject<boolean>;
+  gameHistory: React.MutableRefObject<Array<Move>>;
 }
 
 interface SquareStyle {
@@ -43,14 +45,25 @@ const Square: React.FC<SquareProps> = ({
   x,
   y,
   grids,
-  setGrids,
   turn,
+  gameHistory,
 }: SquareProps) => {
   const classes = useStyles({ length });
-  const state = grids[x][y];
+  const [colorClass, setColorClass]: [string, React.Dispatch<React.SetStateAction<string>>] = React.useState(classes.no);
+
+  const undoMove = () => {
+    const popNode = gameHistory.current.pop();
+    if (popNode) {
+      grids[popNode.x][popNode.y].current = 0;
+      popNode.setColor(classes.no);
+    }
+    turn.current = !turn.current;
+  };
 
   const resetGame = () => {
-    setGrids(Array.from({ length }, () => Array.from({ length }, () => 0)));
+    while (gameHistory.current.length > 0) {
+      undoMove();
+    }
     turn.current = true;
   };
 
@@ -61,20 +74,20 @@ const Square: React.FC<SquareProps> = ({
 
   const checkWinLose = (val: number) => {
     let countX = 1;
-    for (let i = x + 1; i < length && grids[i][y] === val; i++) ++countX;
-    for (let i = x - 1; i >= 0 && grids[i][y] === val; i--) ++countX;
+    for (let i = x + 1; i < length && grids[i][y].current === val; i++) ++countX;
+    for (let i = x - 1; i >= 0 && grids[i][y].current === val; i--) ++countX;
 
     let countY = 1;
-    for (let i = y + 1; i < length && grids[x][i] === val; i++) ++countY;
-    for (let i = y - 1; i >= 0 && grids[x][i] === val; i--) ++countY;
+    for (let i = y + 1; i < length && grids[x][i].current === val; i++) ++countY;
+    for (let i = y - 1; i >= 0 && grids[x][i].current === val; i--) ++countY;
 
     let countDiag1 = 1;
-    for (let i = 1; x + i < length && y + i < length && grids[x + i][y + i] === val; i++) ++countDiag1;
-    for (let i = 1; x - i >= 0 && y - i >= 0 && grids[x - i][y - i] === val; i++) ++countDiag1;
+    for (let i = 1; x + i < length && y + i < length && grids[x + i][y + i].current === val; i++) ++countDiag1;
+    for (let i = 1; x - i >= 0 && y - i >= 0 && grids[x - i][y - i].current === val; i++) ++countDiag1;
 
     let countDiag2 = 1;
-    for (let i = 1; x + i < length && y - i >= 0 && grids[x + i][y - i] === val; i++) ++countDiag2;
-    for (let i = 1; x - i >= 0 && y + i < length && grids[x - i][y + i] === val; i++) ++countDiag2;
+    for (let i = 1; x + i < length && y - i >= 0 && grids[x + i][y - i].current === val; i++) ++countDiag2;
+    for (let i = 1; x - i >= 0 && y + i < length && grids[x - i][y + i].current === val; i++) ++countDiag2;
 
     if (Math.max(countX, countY, countDiag1, countDiag2) >= 5) {
       announceWin(val);
@@ -82,31 +95,24 @@ const Square: React.FC<SquareProps> = ({
   };
 
   const onClickSquare = () => {
-    if (grids[x][y] === 0) {
+    if (grids[x][y].current === 0) {
       if (turn.current) {
-        const arr = [...grids];
-        arr[x][y] = 1;
-        setGrids(arr);
-        turn.current = false;
+        grids[x][y].current = 1;
+        setColorClass(classes.blue);
       } else {
-        const arr = [...grids];
-        arr[x][y] = 2;
-        setGrids(arr);
-        turn.current = true;
+        grids[x][y].current = 2;
+        setColorClass(classes.red);
       }
+      turn.current = !turn.current;
+      gameHistory.current.push({ x, y, setColor: setColorClass });
       checkWinLose(turn.current ? 2 : 1);
     }
-  };
-  const colorClass = () => {
-    if (state === 1) return classes.blue;
-    if (state === 2) return classes.red;
-    return classes.no;
   };
 
   return (
     <Paper
       elevation={0}
-      className={`${classes.square} ${colorClass()}`}
+      className={`${classes.square} ${colorClass}`}
       onClick={onClickSquare}
     />
   );

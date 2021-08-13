@@ -7,6 +7,12 @@ export interface GridProps {
   length: number;
 }
 
+export interface Move {
+  x: number;
+  y: number;
+  setColor: React.Dispatch<React.SetStateAction<string>>;
+}
+
 const useStyles = makeStyles((theme) => ({
   root: {
     display: 'flex',
@@ -26,25 +32,21 @@ const useStyles = makeStyles((theme) => ({
 const GameGrid = ({ length }: GridProps) => {
   const classes = useStyles();
   const turn = React.useRef(true);
-  const [grids, setGrids]: [
-    Array<Array<number>>,
-    React.Dispatch<React.SetStateAction<Array<Array<number>>>>,
-  ] = React.useState(
-    Array.from({ length }, () => Array.from({ length }, () => 0)),
-  );
+  const grids = Array.from({ length }, () => Array.from({ length }, () => React.useRef(0)));
+  const gameHistory: React.MutableRefObject<Array<Move>> = React.useRef([]);
 
   return (
     <div className={classes.root}>
-      {grids.map((row: Array<number>, i: number) => (
+      {grids.map((row, i: number) => (
         <div className={classes.row}>
-          {row.map((entry: number, j: number) => (
+          {row.map((entry, j: number) => (
             <Square
               length={length}
               x={i}
               y={j}
               grids={grids}
-              setGrids={setGrids}
               turn={turn}
+              gameHistory={gameHistory}
             />
           ))}
         </div>
